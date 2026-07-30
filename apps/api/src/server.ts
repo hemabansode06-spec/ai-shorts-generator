@@ -2,18 +2,21 @@ import express, { Request, Response, NextFunction } from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import morgan from "morgan";
-import { PrismaClient } from "@prisma/client";
+import prisma from "./lib/prisma";
 
 // Load environment variables from .env
 dotenv.config();
 
-const prisma = new PrismaClient();
 const app = express();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
+
+// Mount routes
+import authRoutes from "./routes/auth.routes";
+app.use('/api/auth', authRoutes);
 
 // Simple health check
 app.get("/health", async (_req: Request, res: Response) => {
