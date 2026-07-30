@@ -1,0 +1,116 @@
+// Prisma schema for ai-shorts-generator
+// Datasource: PostgreSQL (set DATABASE_URL in environment)
+// Generator: Prisma Client
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum Role {
+  USER
+  ADMIN
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum VideoFormat {
+  MP4
+  WEBM
+  GIF
+}
+
+// Models
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  name      String?
+  role      Role      @default(USER)
+  apiKeys   ApiKey[]
+  projects  Project[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model ApiKey {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  label     String?
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  createdAt DateTime @default(now())
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  owner       User     @relation(fields: [ownerId], references: [id])
+  ownerId     String
+  shorts      Short[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Short {
+  id             String       @id @default(uuid())
+  project        Project      @relation(fields: [projectId], references: [id])
+  projectId      String
+  title          String?
+  description    String?
+  sourceFile     File?        @relation(fields: [sourceFileId], references: [id])
+  sourceFileId   String?
+  outputFile     File?        @relation("shortOutput", fields: [outputFileId], references: [id])
+  outputFileId   String?
+  durationSec    Float?
+  width          Int?
+  height         Int?
+  format         VideoFormat?
+  metadata       Json?
+  jobs           ProcessingJob[]
+  published      Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model File {
+  id         String   @id @default(uuid())
+  path       String   // Storage path / URL
+  sizeBytes  Int?
+  mimeType   String?
+  checksum   String?  @unique
+  createdAt  DateTime @default(now())
+
+  // Relations
+  // A file may be the source for many Shorts
+  Short?     Short?   @relation(fields: [], references: [])
+  // Used as output for a single Short (via relation name)
+  shortOutput Short?  @relation("shortOutput")
+}
+
+model ProcessingJob {
+  id           String    @id @default(uuid())
+  short        Short     @relation(fields: [shortId], references: [id])
+  shortId      String
+  kind         String    // e.g., "transcode", "thumbnail", "ai-generate-subtitles"
+  status       JobStatus @default(PENDING)
+  attempts     Int       @default(0)
+  lastError    String?
+  payload      Json?     // Arbitrary job metadata / params
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+// Add any additional models (e.g., billing, analytics) as needed
